@@ -1,8 +1,9 @@
-Shader "Unlit/007"
+Shader "Unlit/006"
 {
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
+        _Diffuse("Diffuse",Color) = (1,1,1,1)
     }
     SubShader
     {
@@ -18,40 +19,35 @@ Shader "Unlit/007"
             #pragma multi_compile_fog
 
             #include "UnityCG.cginc"
+            #include "Lighting.cginc"
 
-            struct appdata
-            {
-                float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
-            };
+            fixed4 _Diffuse;
 
             struct v2f
             {
-                float2 uv : TEXCOORD0;
-                UNITY_FOG_COORDS(1)
-                float4 vertex : SV_POSITION;
+                float4 vertex:SV_POSITION;
+                fixed3 worldNormal:TEXCOORD0;
             };
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-
-            v2f vert (appdata v)
+            v2f vert(appdata_base v)
             {
                 v2f o;
                 o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                UNITY_TRANSFER_FOG(o,o.vertex);
+                fixed3 worldNormal = UnityObjectToWorldNormal(v.normal);
+                o.worldNormal = worldNormal;
                 return o;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            fixed4 frag(v2f i):SV_Target
             {
-                // sample the texture
-                fixed4 col = tex2D(_MainTex, i.uv);
-                // apply fog
-                UNITY_APPLY_FOG(i.fogCoord, col);
-                return col;
+                fixed3 ambient = UNITY_LIGHTMODEL_AMBIENT.xyz;
+                fixed3 worldLightDir = normalize(_WorldSpaceLightPos0.xyz);
+                fixed3 diffuse = _LightColor0.rgb * _Diffuse.rgb * max(0,dot(worldLightDir,i.worldNormal));
+                fixed3 color = ambient + diffuse;
+                return fixed4(color,1);
             }
+
+          
             ENDCG
         }
     }
